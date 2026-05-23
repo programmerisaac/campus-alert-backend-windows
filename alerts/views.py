@@ -40,6 +40,7 @@ from .tasks import dispatch_alert_task
 logger = logging.getLogger('campusalert.alerts.views')
 
 
+
 class AlertComposeView(APIView):
     """
     POST /api/v1/alerts/
@@ -65,11 +66,12 @@ class AlertComposeView(APIView):
         category: str = serializer.validated_data.get('category', Alert.Category.GENERAL)
 
         # ── Step 1: Run classification pipeline (synchronous, < 500ms) ────────
-        urgency, method, confidence = classify_alert(title=title, body=body)
+        # Returns a ClassificationResult object with .urgency, .method, .confidence
+        result = classify_alert(title=title, body=body)
 
         logger.info(
             'Alert classified: urgency=%s method=%s confidence=%s by admin=%s',
-            urgency, method, confidence, request.user.username,
+            result.urgency, result.method, result.confidence, request.user.username,
         )
 
         # ── Step 2: Save the classified alert inside a transaction ────────────
@@ -78,9 +80,9 @@ class AlertComposeView(APIView):
                 title=title,
                 body=body,
                 category=category,
-                urgency=urgency,
-                classification_method=method,
-                classification_confidence=confidence,
+                urgency=result.urgency,
+                classification_method=result.method,
+                classification_confidence=result.confidence,
                 created_by=request.user,
                 status=Alert.Status.CLASSIFIED,
             )
@@ -97,6 +99,66 @@ class AlertComposeView(APIView):
             AlertDetailSerializer(alert).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+
+# class AlertComposeView(APIView):
+#     """
+#     POST /api/v1/alerts/
+
+#     Admin-only endpoint. Accepts title + body + category, runs the classification
+#     pipeline, saves the alert, and dispatches via Celery (non-blocking).
+
+#     The response returns immediately with the classified alert — the admin sees
+#     the urgency level before delivery completes. FCM + LAN delivery happens
+#     asynchronously in the Celery task.
+
+#     Auth: Verified admin role required.
+#     """
+
+#     permission_classes = [IsAuthenticated, IsVerifiedAdminRole]
+
+#     def post(self, request) -> Response:
+#         serializer = AlertCreateSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+
+#         title: str = serializer.validated_data['title']
+#         body: str = serializer.validated_data['body']
+#         category: str = serializer.validated_data.get('category', Alert.Category.GENERAL)
+
+#         # ── Step 1: Run classification pipeline (synchronous, < 500ms) ────────
+#         urgency, method, confidence = classify_alert(title=title, body=body)
+
+#         logger.info(
+#             'Alert classified: urgency=%s method=%s confidence=%s by admin=%s',
+#             urgency, method, confidence, request.user.username,
+#         )
+
+#         # ── Step 2: Save the classified alert inside a transaction ────────────
+#         with transaction.atomic():
+#             alert = Alert.objects.create(
+#                 title=title,
+#                 body=body,
+#                 category=category,
+#                 urgency=urgency,
+#                 classification_method=method,
+#                 classification_confidence=confidence,
+#                 created_by=request.user,
+#                 status=Alert.Status.CLASSIFIED,
+#             )
+
+#             # ── Step 3: Dispatch after commit — never inside the transaction ──
+#             # Celery task only fires after the Alert row is committed to PostgreSQL.
+#             # This prevents the task from trying to load an Alert that hasn't been
+#             # written yet due to a race between Celery and the DB.
+#             transaction.on_commit(
+#                 lambda: dispatch_alert_task.delay(str(alert.id))
+#             )
+
+#         return Response(
+#             AlertDetailSerializer(alert).data,
+#             status=status.HTTP_201_CREATED,
+#         )
 
 
 class AlertPagePagination(PageNumberPagination):
