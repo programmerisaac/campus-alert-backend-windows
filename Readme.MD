@@ -216,7 +216,7 @@ Before you begin, make sure the following are installed on your machine.
 | Software   | Version | Installation                              |
 |------------|---------|-------------------------------------------|
 | Python     | 3.11+   | https://python.org                        |
-| PostgreSQL | 15+     | https://postgresql.org                    |
+| PostgreSQL | 17+     | https://postgresql.org                    |
 | Redis      | 7+      | https://redis.io (or via Docker)          |
 | Git        | any     | https://git-scm.com                       |
 
@@ -231,7 +231,7 @@ Before you begin, make sure the following are installed on your machine.
 
 ```bash
 python --version        # Python 3.11.x or higher
-psql --version          # psql (PostgreSQL) 15.x
+psql --version          # psql (PostgreSQL) 18.x
 redis-cli --version     # Redis cli 7.x
 
 
@@ -241,83 +241,6 @@ redis-cli --version     # Redis cli 7.x
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# campusalert/README.md
-
-# CampusAlert — Django Backend Setup Guide
-
-A Django 6.x + Flutter alert system for Covenant University with XGBoost urgency
-classification, FCM push notifications, and native ASGI WebSocket LAN delivery.
-
----
-
-## Prerequisites
-
-| Tool | Version |
-|------|---------|
-| Python | 3.11+ |
-| PostgreSQL | 15+ |
-| Redis | 7+ |
-| Node.js | Not required — backend only |
 
 ---
 

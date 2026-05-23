@@ -1,4 +1,4 @@
-# alerts/services/classifier.py
+# campusalert/alerts/services/classifier.py
 
 """
 Alert urgency classification service — Phase 2.
@@ -22,15 +22,15 @@ Model loading:
     This means the ~50ms joblib load cost is paid only once per worker process.
 
 Usage:
-    from alerts.services.classifier import classify_alert, ClassificationResult
+    from alerts.services.classifier import classify_alert
 
-    result = classify_alert(
+    urgency, method, confidence = classify_alert(
         title="EMERGENCY: Fire in Hall C",
         body="All students must evacuate immediately.",
     )
-    # result.urgency    → "critical"
-    # result.method     → "keyword_override"
-    # result.confidence → None  (keyword override, no model score)
+    # urgency    → "critical"
+    # method     → "keyword_override"
+    # confidence → None  (keyword override, no model score)
 """
 
 import logging
@@ -39,25 +39,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, Field
 from django.conf import settings
 
 logger = logging.getLogger('campusalert.classifier')
-
-
-class ClassificationResult(BaseModel):
-    """
-    Typed result of the alert classification pipeline.
-    
-    Attributes:
-        urgency: The classified urgency level (critical | high | medium | low).
-        method: How urgency was determined (keyword_override | xgboost).
-        confidence: XGBoost prediction confidence (0–1), or None if keyword override.
-    """
-    urgency: str = Field(..., description="critical | high | medium | low")
-    method: str = Field(..., description="keyword_override | xgboost")
-    confidence: Optional[float] = Field(None, description="XGBoost confidence (0–1) or None")
-
 
 # ── Urgency keyword map (PRD §3.3) ────────────────────────────────────────────
 # Evaluated in priority order: critical → high → medium → low.
@@ -141,7 +125,7 @@ def _load_model():
 def classify_alert(
     title: str,
     body: str,
-) -> ClassificationResult:
+) -> tuple[str, str, Optional[float]]:
     """
     Classifies an alert into one of four urgency levels.
 
@@ -154,7 +138,10 @@ def classify_alert(
         body:  The alert body text.
 
     Returns:
-        ClassificationResult with urgency, method, and confidence.
+        A 3-tuple of:
+            urgency    (str)            — "critical" | "high" | "medium" | "low"
+            method     (str)            — "keyword_override" | "xgboost"
+            confidence (float | None)   — XGBoost confidence (0–1), None if keyword override
     """
     combined_text = f'{title} {body}'.lower().strip()
 
@@ -168,11 +155,7 @@ def classify_alert(
                 urgency_level,
                 combined_text[:60],
             )
-            return ClassificationResult(
-                urgency=urgency_level,
-                method='keyword_override',
-                confidence=None,
-            )
+            return urgency_level, 'keyword_override', None
 
     # ── Step 2: XGBoost classification ────────────────────────────────────────
     try:
@@ -183,11 +166,7 @@ def classify_alert(
         logger.warning(
             'XGBoost model unavailable (%s). Defaulting urgency to low.', exc
         )
-        return ClassificationResult(
-            urgency='low',
-            method='xgboost',
-            confidence=None,
-        )
+        return 'low', 'xgboost', None
 
 
 def _text_contains_keyword(text: str, keywords: list[str]) -> bool:
@@ -213,7 +192,7 @@ def _text_contains_keyword(text: str, keywords: list[str]) -> bool:
     return False
 
 
-def _run_xgboost(text: str) -> ClassificationResult:
+def _run_xgboost(text: str) -> tuple[str, str, float]:
     """
     Runs the TF-IDF → XGBoost inference pipeline.
 
@@ -221,7 +200,7 @@ def _run_xgboost(text: str) -> ClassificationResult:
         text: Lowercased, combined title+body text.
 
     Returns:
-        ClassificationResult with urgency, xgboost method, and confidence.
+        Tuple of (urgency, "xgboost", confidence_score).
     """
     model, vectorizer = _load_model()
 
@@ -244,10 +223,5 @@ def _run_xgboost(text: str) -> ClassificationResult:
         text[:60],
     )
 
-    return ClassificationResult(
-        urgency=urgency,
-        method='xgboost',
-        confidence=confidence,
-    )
-
+    return urgency, 'xgboost', confidence
 

@@ -1,4 +1,4 @@
-# alerts/forms.py
+# campusalert/alerts/forms.py
 
 """
 Admin forms for the Alert model.
@@ -141,4 +141,4 @@ class AdminAlertCreationForm(forms.ModelForm):
             "method": result.method,
             "confidence": result.confidence,
         }
-
+    

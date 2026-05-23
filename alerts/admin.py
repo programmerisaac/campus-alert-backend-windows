@@ -372,13 +372,13 @@ class AlertAdmin(admin.ModelAdmin):
         # Enqueue delivery AFTER the atomic save completes
         if not change and form.cleaned_data.get("dispatch_immediately", True):
             from django.db import transaction
-            from alerts.tasks import deliver_alert_task
+            from alerts.tasks import dispatch_alert_task
 
             transaction.on_commit(
-                lambda: deliver_alert_task.delay(str(obj.id))
+                lambda: dispatch_alert_task.delay(str(obj.id))
             )
             logger.info(
-                "Alert %s enqueued for delivery by admin %s.",
+                "Alert %s enqueued for dispatch by admin %s.",
                 obj.id,
                 request.user,
             )
@@ -390,7 +390,7 @@ class AlertAdmin(admin.ModelAdmin):
         immediately sees what the pipeline decided.
         """
         dispatch_status = (
-            "and enqueued for delivery"
+            "and enqueued for dispatch"
             if request.POST.get("dispatch_immediately")
             else "— held in CLASSIFIED status (not yet dispatched)"
         )
