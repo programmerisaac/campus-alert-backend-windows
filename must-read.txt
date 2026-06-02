@@ -1,3 +1,23 @@
+
+## RUNNING THE PROJECT
+
+# Terminal 1 - Allow your phone (and any device on the LAN) to reach Django
+uvicorn website.asgi:application --host 0.0.0.0 --port 8000 --reload
+
+
+# Terminal 2 — Celery worker
+# --pool=solo is set automatically via settings.py, but explicit is fine too
+celery -A website worker --loglevel=info --pool=solo
+
+# Terminal 3 — Celery beat (task scheduler)
+celery -A website beat --loglevel=info
+
+
+
+
+
+
+
 # 1. Install dependencies
 pip install -r requirements.txt
 
@@ -23,26 +43,6 @@ python ml/train.py --dataset ml/data/crisis_dataset.csv
 uvicorn website.asgi:application --host 0.0.0.0 --port 8000 --reload
 celery -A website worker -l info -c 4
 redis-server
-
-
-
-## RUNNING THE PROJECT
-
-# Terminal 1 - Allow your phone (and any device on the LAN) to reach Django
-uvicorn website.asgi:application --host 0.0.0.0 --port 8000 --reload
-
-
-
-
-# Terminal 2 — Celery worker
-# --pool=solo is set automatically via settings.py, but explicit is fine too
-celery -A website worker --loglevel=info --pool=solo
-
-# Terminal 3 — Celery beat (task scheduler)
-celery -A website beat --loglevel=info
-
-
-
 
 
 
