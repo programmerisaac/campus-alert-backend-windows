@@ -292,14 +292,14 @@ class AdminAlertListView(generics.ListAPIView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        """Admins see all their own alerts; superusers see all alerts."""
-        qs = Alert.objects.select_related('created_by').prefetch_related('delivery_logs')
+        # Any verified admin sees ALL alerts — not just their own.
+        # IsVerifiedAdminRole already ensures only admins reach this view.
+        return (
+            Alert.objects
+            .select_related('created_by')
+            .prefetch_related('delivery_logs')
+        )
 
-        if not self.request.user.is_superuser:
-            # Regular admins only see their own alerts
-            qs = qs.filter(created_by=self.request.user)
-
-        return qs
 
 
 class AlertDeliveryStatusView(generics.RetrieveAPIView):
@@ -318,12 +318,14 @@ class AlertDeliveryStatusView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsVerifiedAdminRole]
 
     def get_queryset(self):
-        qs = Alert.objects.prefetch_related(
-            'delivery_logs__user',
+        # Any verified admin can view delivery status for any alert.
+        # The created_by filter was causing 404s for alerts created by
+        # other admin accounts or the same account across sessions.
+        return (
+            Alert.objects
+            .select_related('created_by')
+            .prefetch_related('delivery_logs__user')
         )
-        if not self.request.user.is_superuser:
-            qs = qs.filter(created_by=self.request.user)
-        return qs
     
 
 

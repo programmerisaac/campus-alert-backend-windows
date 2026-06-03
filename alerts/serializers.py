@@ -103,11 +103,6 @@ class AlertListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_created_by_name(self, obj: Alert) -> str:
-        """Returns the display name of the admin who composed the alert."""
-        return obj.created_by.get_display_name()
-
-
 class AlertDetailSerializer(serializers.ModelSerializer):
     """
     Full alert representation used in:
