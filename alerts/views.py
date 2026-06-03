@@ -252,13 +252,19 @@ class AlertAcknowledgeView(APIView):
         DeliveryLog.objects.update_or_create(
             alert=alert,
             user=request.user,
-            channel=channel,
+            # If the row EXISTS (was created by dispatch): update only timestamps,
+            # preserve the original delivery channel (fcm / lan_websocket)
             defaults={
                 'acknowledged_at': now,
-                'delivered_at': now,  # If not already set, mark as delivered now
+                'delivered_at': now,
+            },
+            # If the row does NOT exist (no prior delivery log): create a full row
+            create_defaults={
+                'channel': channel,
+                'acknowledged_at': now,
+                'delivered_at': now,
             },
         )
-
         logger.info(
             'Alert %s acknowledged by user %s via %s.',
             alert.id, request.user.username, channel,

@@ -80,8 +80,7 @@ class AlertListSerializer(serializers.ModelSerializer):
     small for list rendering and offline sync. Full details are fetched
     individually when the user taps an alert.
     """
-
-    created_by_name = serializers.SerializerMethodField()
+    created_by = UserProfileSerializer(read_only=True)
     is_high_priority = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -93,11 +92,14 @@ class AlertListSerializer(serializers.ModelSerializer):
             'category',
             'urgency',
             'status',
+            'classification_method',        # add — needed by FullScreenAlertScreen
+            'classification_confidence',    # add
             'is_high_priority',
-            'created_by_name',
+            'created_by',                   # changed from created_by_name
             'recipient_count',
             'dispatched_at',
             'created_at',
+            'is_active',                    # add — needed by Alert interface
         ]
         read_only_fields = fields
 
